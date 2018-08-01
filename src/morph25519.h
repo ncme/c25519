@@ -1,7 +1,8 @@
-/* Montgomery <-> Edwards isomorphism
- * Daniel Beer <dlbeer@gmail.com>, 18 Jan 2014
+/* Conversion functions using curve isomorphisms
  *
- * This file is in the public domain.
+ * Daniel Beer <dlbeer@gmail.com>, 18 Jan 2014
+ * Nikolas Rösener <nroesener@uni-bremen.de> 1 Aug 2018
+ *
  */
 
 #ifndef MORPH25519_H_
