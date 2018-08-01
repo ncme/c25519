@@ -1,5 +1,5 @@
 
-Curve25519 and Ed25519 for low-memory systems
+Wei25519, Curve25519 and Ed25519 for low-memory systems
 =============================================
 
 > Original by Daniel Beer <dlbeer@gmail.com> 25 Apr 2014, updated 03 Oct 2017
@@ -7,7 +7,10 @@ Curve25519 and Ed25519 for low-memory systems
 
 This package contains portable public-domain implementations of Daniel
 J. Bernstein's Curve25519[^1] Diffie-Hellman function, and of the
-Ed25519 signature system[^2]. The memory consumption is low enough that
+Ed25519 signature system[^2]. Furthermore it includes transformations
+between the birationally equivalent curves Wei25519, Curve25519 and Ed25519.
+
+The memory consumption is low enough that
 they could be reasonably considered for most microcontroller
 applications. In particular, Curve25519 scalar multiplication uses less
 than half a kB of peak stack usage.
