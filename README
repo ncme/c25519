@@ -1,9 +1,9 @@
+
 Curve25519 and Ed25519 for low-memory systems
 =============================================
 
-Daniel Beer
-<dlbeer@gmail.com>
-25 Apr 2014, updated 03 Oct 2017
+> Original by Daniel Beer <dlbeer@gmail.com> 25 Apr 2014, updated 03 Oct 2017
+> Modified by Nikolas Rösener <nroesener@uni-bremen.de> 01 Aug 2018
 
 This package contains portable public-domain implementations of Daniel
 J. Bernstein's Curve25519[^1] Diffie-Hellman function, and of the
@@ -100,7 +100,10 @@ optimizations.
 License
 -------
 
-This entire package is in the public domain.
+This modified version of C25519 is licensed under the MIT license.
+
+The [original C25519](https://www.dlbeer.co.nz/oss/c25519.html) is in the public domain.
+
 
 References
 ----------
