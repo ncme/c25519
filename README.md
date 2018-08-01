@@ -36,9 +36,10 @@ The package is divided into the following separable subsystems:
 
 ``morph25519``
 
-  ~ Conversion between Montgomery (c25519) and Edwards (ed25519)
-    coordinates. This can be used, for example, to compute the Curve25519
-    Diffie-Hellman exchange in Edwards coordinates.
+  ~ Conversion between short Weierstrass (wei25519), Montgomery (c25519)
+    and Edwards (ed25519) coordinates. This can be used, for example,
+    to compute the Curve25519 Diffie-Hellman exchange in Edwards
+    coordinates or to perform ECDSA with Ed25519 or Curve25519.
 
 ``fprime``
 
