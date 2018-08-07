@@ -78,7 +78,7 @@ static void mx2ey(uint8_t *ey, const uint8_t *mx)
  * Recovers the x-coordinate of the Edwards curve Ed25519
  * from the y-coordinate and a parity bit.
  */
-static uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
+uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
 {
 	static const uint8_t d[F25519_SIZE] = {
 		0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75,
