@@ -226,14 +226,14 @@ void morph25519_e2w(uint8_t* wx, uint8_t* wy, const uint8_t* ex, const uint8_t* 
  * Transforms an affine point on the short Weierstrass curve Wei25519
  * to an affine point on the Edwards curve Ed25519.
  */
-void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* my)
+void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* wx, const uint8_t* wy)
 {
 	// TODO: check special cases
 
 	/*
 		The following code calculates:
 		pa = 3 * p.x - A
-		ex = (c * pa) / (3 * my)
+		ex = (c * pa) / (3 * wy)
 		ey = (pa - 3) / (pa + 3)
 	*/
 	uint8_t  pa[F25519_SIZE]; // intermediate result
@@ -241,14 +241,14 @@ void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* 
 	uint8_t den[F25519_SIZE]; // denominator
 	uint8_t inv[F25519_SIZE]; // inverted denominator
 
-	f25519_mul__distinct(inv, f25519_three, mx);// inv = 3 * mx
-	f25519_sub(pa, inv, f25519_A);              // pa  = 3 * mx - A
+	f25519_mul__distinct(inv, f25519_three, wx);// inv = 3 * wx
+	f25519_sub(pa, inv, f25519_A);              // pa  = 3 * wx - A
 
 	f25519_mul__distinct(nom, f25519_c, pa);    // nom =  c * pa
-	f25519_mul__distinct(den, f25519_three, my);// den =             3 * my
-	f25519_inv__distinct(inv, den);             // inv =            (3 * my)^-1
-	f25519_mul__distinct(ex, nom, inv);         // ex  = (c * pa) * (3 * my)^-1
-	f25519_normalize(ex);                       // ex  = (c * pa) * (3 * my)^-1 (mod p)
+	f25519_mul__distinct(den, f25519_three, wy);// den =             3 * wy
+	f25519_inv__distinct(inv, den);             // inv =            (3 * wy)^-1
+	f25519_mul__distinct(ex, nom, inv);         // ex  = (c * pa) * (3 * wy)^-1
+	f25519_normalize(ex);                       // ex  = (c * pa) * (3 * wy)^-1 (mod p)
 
 	f25519_sub(nom, pa, f25519_three);          // nom =  pa - 3
 	f25519_add(den, pa, f25519_three);          // den =             pa + 3
