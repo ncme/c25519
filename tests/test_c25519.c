@@ -695,6 +695,47 @@ static void test_dh(void)
 	printf("\n");
 }
 
+static void test_dh_xy(void)
+{
+	uint8_t e1[C25519_EXPONENT_SIZE];
+	uint8_t e2[C25519_EXPONENT_SIZE];
+	uint8_t xP1[F25519_SIZE], yP1[F25519_SIZE];
+	uint8_t xP2[F25519_SIZE], yP2[F25519_SIZE];
+	uint8_t xR1[F25519_SIZE], yR1[F25519_SIZE];
+	uint8_t xR2[F25519_SIZE], yR2[F25519_SIZE];
+	unsigned int i;
+
+	for (i = 0; i < sizeof(e1); i++)
+		e1[i] = random();
+	for (i = 0; i < sizeof(e2); i++)
+		e2[i] = random();
+
+	/* Create private keys */
+	c25519_prepare(e1);
+	c25519_prepare(e2);
+
+	/* Create public keys */
+	c25519_smult_xy(xP1, yP1, c25519_base_x, c25519_base_y, e1);
+	c25519_smult_xy(xP2, yP2, c25519_base_x, c25519_base_y, e2);
+
+	/* Diffie-Hellman exchange */
+	c25519_smult_xy(xR1, yR1, xP2, yP2, e1);
+	c25519_smult_xy(xR2, yR2, xP1, yP1, e2);
+
+	assert(f25519_eq(xR1, xR2));
+	assert(f25519_eq(yR1, yR2));
+
+	printf("  ");
+	for (i = 0; i < F25519_SIZE; i++)
+		printf("%02x", yR1[i]);
+	printf("\n");
+	printf("  ");
+	for (i = 0; i < F25519_SIZE; i++)
+		printf("%02x", yR2[i]);
+	printf("\n");
+	printf("\n");
+}
+
 static void test_vector(const struct test_vector *v)
 {
 	uint8_t r[F25519_SIZE];
@@ -726,6 +767,10 @@ int main(void)
 	printf("test_dh\n");
 	for (i = 0; i < 32; i++)
 		test_dh();
+
+	printf("test_dh_xy\n");
+	for (i = 0; i < 32; i++)
+		test_dh_xy();
 
 	return 0;
 }

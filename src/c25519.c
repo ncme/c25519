@@ -7,6 +7,12 @@
 #include "c25519.h"
 
 const uint8_t c25519_base_x[F25519_SIZE] = {9};
+const uint8_t c25519_base_y[F25519_SIZE] = {
+	0xd9, 0xd3, 0xce, 0x7e, 0xa2, 0xc5, 0xe9, 0x29,
+	0xb2, 0x61, 0x7c, 0x6d, 0x7e, 0x4d, 0x3d, 0x92,
+	0x4c, 0xd1, 0x48, 0x77, 0x2c, 0xdd, 0x1e, 0xe0,
+	0xb4, 0x86, 0xa0, 0xb8, 0xa1, 0x19, 0xae, 0x20
+};  // the y coordinate of the base point
 
 /* Double an X-coordinate */
 static void xc_double(uint8_t *x3, uint8_t *z3,
@@ -80,16 +86,11 @@ static void xc_diffadd(uint8_t *x5, uint8_t *z5,
 	f25519_mul__distinct(z5, x1, b);
 }
 
-void c25519_smult(uint8_t *result, const uint8_t *q, const uint8_t *e)
+static void projective_ladder(
+				uint8_t *xm, uint8_t *zm,
+				uint8_t *xm1, uint8_t *zm1,
+				const uint8_t *q, const uint8_t *e)
 {
-	/* Current point: P_m */
-	uint8_t xm[F25519_SIZE];
-	uint8_t zm[F25519_SIZE] = {1};
-
-	/* Predecessor: P_(m-1) */
-	uint8_t xm1[F25519_SIZE] = {1};
-	uint8_t zm1[F25519_SIZE] = {0};
-
 	int i;
 
 	/* Note: bit 254 is assumed to be 1 */
@@ -116,9 +117,47 @@ void c25519_smult(uint8_t *result, const uint8_t *q, const uint8_t *e)
 		f25519_select(xm, xm, xms, bit);
 		f25519_select(zm, zm, zms, bit);
 	}
+}
+
+void c25519_smult(uint8_t *result, const uint8_t *q, const uint8_t *e)
+{
+	/* Current point: P_m */
+	uint8_t xm[F25519_SIZE];
+	uint8_t zm[F25519_SIZE] = {1};
+
+	/* Predecessor: P_(m-1) */
+	uint8_t xm1[F25519_SIZE] = {1};
+	uint8_t zm1[F25519_SIZE] = {0};
+
+	projective_ladder(xm, zm, xm1, zm1, q, e);
 
 	/* Freeze out of projective coordinates */
 	f25519_inv__distinct(zm1, zm);
 	f25519_mul__distinct(result, zm1, xm);
 	f25519_normalize(result);
+}
+
+void c25519_smult_xy(uint8_t *xR, uint8_t *yR, const uint8_t *xP, const uint8_t *yP, const uint8_t *e)
+{
+	/* Current point: P_m */
+	uint8_t xm[F25519_SIZE];
+	uint8_t zm[F25519_SIZE] = {1};
+
+	/* Predecessor: P_(m-1) */
+	uint8_t xm1[F25519_SIZE] = {1};
+	uint8_t zm1[F25519_SIZE] = {0};
+
+	/* Calculate x(P) using Montgomery ladder */
+	projective_ladder(xm, zm, xm1, zm1, xP, e);
+
+	/* Recover y-coordinate */
+	uint8_t xQ[F25519_SIZE], yQ[F25519_SIZE], zQ[F25519_SIZE];
+	morph25519_montgomery_recovery(xQ, yQ, zQ, xP, yP, xm1, zm1, xm, zm);
+
+	/* Freeze out of projective coordinates */
+	f25519_inv__distinct(zm, zQ);
+	f25519_mul__distinct(xR, zm, xQ);
+	f25519_mul__distinct(yR, zm, yQ);
+	f25519_normalize(xR);
+	f25519_normalize(yR);
 }

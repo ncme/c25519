@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "f25519.h"
+#include "morph25519.h"
 
 /* Curve25519 has the equation over F(p = 2^255-19):
  *
@@ -37,6 +38,8 @@ static inline void c25519_prepare(uint8_t *key)
 
 /* X-coordinate of the base point */
 extern const uint8_t c25519_base_x[F25519_SIZE];
+/* Y-coordinate of the base point */
+extern const uint8_t c25519_base_y[F25519_SIZE];
 
 /* X-coordinate scalar multiply: given the X-coordinate of q, return the
  * X-coordinate of e*q.
@@ -44,5 +47,10 @@ extern const uint8_t c25519_base_x[F25519_SIZE];
  * result and q are field elements. e is an exponent.
  */
 void c25519_smult(uint8_t *result, const uint8_t *q, const uint8_t *e);
+
+/*
+ * Full scalar multiply: given (xP, yP), return (xR, yR) of e*P
+ */
+void c25519_smult_xy(uint8_t *xR, uint8_t *yR, const uint8_t *xP, const uint8_t *yP, const uint8_t *e);
 
 #endif

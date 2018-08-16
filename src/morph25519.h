@@ -24,7 +24,11 @@ static inline int morph25519_eparity(const uint8_t *edwards_x)
 	return edwards_x[0] & 1;
 }
 
-uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity);
+void morph25519_montgomery_recovery(
+			uint8_t *xQ, uint8_t *yQ, uint8_t *zQ,
+			const uint8_t *xP, const uint8_t *yP,
+			const uint8_t *XQ, const uint8_t *ZQ,
+			const uint8_t *xD, const uint8_t *zD);
 
 /* Convert a Montgomery X and a parity bit to an Edwards X/Y. Returns
  * non-zero if successful.

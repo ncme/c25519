@@ -121,6 +121,63 @@ uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
 }
 
 /*
+Okeya–Sakurai y-coordinate recovery
+Input:
+	(xP : yP : 1) = P,
+	(XQ : ZQ) = x(Q),
+	(X⊕ : Z⊕) = x(P ⊕ Q) for P and Q in E(A,B)(Fq)
+	 with P /∈ E(A,B)[2] and Q /∈ {P, ⊖P, O}.
+Output:
+	(X′ : Y′ : Z′) = Q
+Cost:
+	10M + 1S + 2c + 3a + 3s
+*/
+void morph25519_montgomery_recovery(
+			uint8_t *xQ, uint8_t *yQ, uint8_t *zQ,
+			const uint8_t *xP, const uint8_t *yP,
+			const uint8_t *XQ, const uint8_t *ZQ,
+			const uint8_t *xD, const uint8_t *zD)
+{
+	static const uint8_t A2[F25519_SIZE] = {
+	0x0c, 0xda, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+	}; // 2 * A
+
+	static const uint8_t B2[F25519_SIZE] = {
+	0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+	}; // 2 * B
+
+	uint8_t v1[F25519_SIZE], v2[F25519_SIZE];
+	uint8_t	v3[F25519_SIZE], v4[F25519_SIZE];
+
+	f25519_mul(v1, xP, ZQ); // 1 v1 ← xP · ZQ 	1M
+	f25519_add(v2, XQ, v1);	// 2 v2 ← XQ + v1 	1a
+	f25519_sub(v3, XQ, v1);	// 3 v3 ← XQ − v1 	1s
+	f25519_mul(v3, v3, v3);	// 4 v3 ← v3^2 		1S
+	f25519_mul(v3, v3, xD);	// 5 v3 ← v3 · X⊕ 	1M
+	f25519_mul(v1, A2, ZQ);	// 6 v1 ← 2A · ZQ 	1c
+	f25519_add(v2, v2, v1);	// 7 v2 ← v2 + v1 	1a
+	f25519_mul(v4, xP, XQ);	// 8 v4 ← xP · XQ 	1M
+	f25519_add(v4, v4, ZQ);	// 9 v4 ← v4 + ZQ 	1a
+	f25519_mul(v2, v2, v4);	// 10 v2 ← v2 · v4 	1M
+	f25519_mul(v1, v1, ZQ);	// 11 v1 ← v1 · ZQ 	1M
+	f25519_sub(v2, v2, v1);	// 12 v2 ← v2 − v1 	1s
+	f25519_mul(v2, v2, zD);	// 13 v2 ← v2 · Z⊕ 	1M
+	f25519_sub(yQ, v2, v3);	// 14 Y′ ← v2 − v3 	1s
+	f25519_mul(v1, B2, yP);	// 15 v1 ← 2B · yP 	1c
+	f25519_mul(v1, v1, ZQ);	// 16 v1 ← v1 · ZQ 	1M
+	f25519_mul(v1, v1, zD);	// 17 v1 ← v1 · Z⊕ 	1M
+	f25519_mul(xQ, v1, XQ);	// 18 X′ ← v1 · XQ 	1M
+	f25519_mul(zQ, v1, ZQ);	// 19 Z′ ← v1 · ZQ 	1M
+	// 20 return (X′ : Y′ : Z′)
+}
+
+/*
  * Transforms the x-coordinate of a point on the Montgomery curve Curve25519
  * to x- and y-coordinate of the Edwards curve Ed25519.
  */
