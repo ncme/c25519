@@ -25,7 +25,7 @@ test: $(TESTS)
 tests/f25519.test: src/f25519.o tests/test_f25519.o
 	$(CC) -o $@ $^
 
-tests/c25519.test: src/f25519.o src/c25519.o tests/test_c25519.o
+tests/c25519.test: src/f25519.o src/morph25519.o src/c25519.o tests/test_c25519.o
 	$(CC) -o $@ $^
 
 tests/ed25519.test: src/f25519.o src/ed25519.o tests/test_ed25519.o
