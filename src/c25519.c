@@ -152,7 +152,7 @@ void c25519_smult_xy(uint8_t *xR, uint8_t *yR, const uint8_t *xP, const uint8_t 
 
 	/* Recover y-coordinate */
 	uint8_t xQ[F25519_SIZE], yQ[F25519_SIZE], zQ[F25519_SIZE];
-	morph25519_montgomery_recovery(xQ, yQ, zQ, xP, yP, xm1, zm1, xm, zm);
+	morph25519_montgomery_recovery(xQ, yQ, zQ, xP, yP, xm, zm, xm1, zm1);
 
 	/* Freeze out of projective coordinates */
 	f25519_inv__distinct(zm, zQ);
