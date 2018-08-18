@@ -15,7 +15,8 @@ TESTS = \
     tests/morph25519.test \
     tests/fprime.test \
     tests/sha512.test \
-    tests/edsign.test
+    tests/edsign.test \
+    tests/ecdsa.test
 
 all: $(TESTS) check
 
@@ -43,6 +44,10 @@ tests/sha512.test: src/sha512.o tests/test_sha512.o
 
 tests/edsign.test: src/f25519.o src/ed25519.o src/fprime.o src/sha512.o \
 		src/edsign.o tests/test_edsign.o
+	$(CC) -o $@ $^
+
+tests/ecdsa.test: src/f25519.o src/ed25519.o src/c25519.o src/fprime.o src/morph25519.o \
+		src/ecdsa.o tests/test_ecdsa.o
 	$(CC) -o $@ $^
 
 tests/ed25519_sign.test: src/f25519.o src/ed25519.o src/fprime.o src/sha512.o \
