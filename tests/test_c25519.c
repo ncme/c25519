@@ -754,6 +754,24 @@ static void test_vector(const struct test_vector *v)
 	printf("\n");
 }
 
+static void test_vector_xy(const struct test_vector *v)
+{
+	uint8_t rx[F25519_SIZE], ry[F25519_SIZE];
+	uint8_t e[F25519_SIZE];
+	unsigned int i;
+
+	f25519_copy(e, v->e);
+	c25519_prepare(e);
+	c25519_smult_xy(rx, ry, v->p, c25519_base_y, e);
+
+	assert(f25519_eq(rx, v->r));
+
+	printf("  ");
+	for (i = 0; i < F25519_SIZE; i++)
+		printf("%02x", ry[i]);
+	printf("\n");
+}
+
 int main(void)
 {
 	unsigned int i;
@@ -763,6 +781,10 @@ int main(void)
 	printf("test_vectors\n");
 	for (i = 0; i < 32; i++)
 		test_vector(&vectors[i]);
+
+	printf("test_vectors_xy\n");
+	for (i = 0; i < 32; i++)
+		test_vector_xy(&vectors[i]);
 
 	printf("test_dh\n");
 	for (i = 0; i < 32; i++)
