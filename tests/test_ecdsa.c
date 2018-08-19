@@ -135,6 +135,7 @@ static const uint8_t n[FPRIME_SIZE] = {
 
 static void test_mixed() {
 	uint8_t r[FPRIME_SIZE], s[FPRIME_SIZE];
+	uint8_t pubx[F25519_SIZE], puby[F25519_SIZE];
 	uint8_t sec[F25519_SIZE];
 	uint8_t msg[F25519_SIZE];
 	uint8_t rnd[F25519_SIZE];
@@ -149,29 +150,23 @@ static void test_mixed() {
 
 	/* Ensure sec, rnd in [1, n-1] and msg not greater than p */
 	fprime_normalize(sec, n);
-	c25519_prepare(msg);
 	fprime_normalize(rnd, n);
+	c25519_prepare(msg);
 
-	struct ed25519_pt p1;
-	uint8_t ex[F25519_SIZE], ey[F25519_SIZE];
-	uint8_t wx[F25519_SIZE], wy[F25519_SIZE];
-	ed25519_smult(&p1, &ed25519_base, sec);
-	ed25519_unproject(ex, ey, &p1);
-	morph25519_e2w(wx, wy, ex, ey);
-
+	ecdsa_pubkey(pubx, puby, sec);
 	assert(ecdsa_sign(r, s, sec, msg, rnd));
-	assert(ecdsa_verify(wx, wy, msg, r, s));
+	assert(ecdsa_verify(pubx, puby, msg, r, s));
 
 	msg[1] ^= 1;
-	assert(0 == ecdsa_verify(wx, wy, msg, r, s));
+	assert(0 == ecdsa_verify(pubx, puby, msg, r, s));
 	msg[1] ^= 1;
 
 	r[0] ^= 1;
-	assert(0 == ecdsa_verify(wx, wy, msg, r, s));
+	assert(0 == ecdsa_verify(pubx, puby, msg, r, s));
 	r[0] ^= 1;
 
 	s[31] ^= 1;
-	assert(0 == ecdsa_verify(wx, wy, msg, r, s));
+	assert(0 == ecdsa_verify(pubx, puby, msg, r, s));
 	s[31] ^= 1;
 }
 
@@ -179,20 +174,12 @@ static void test(const struct test_vector *t)
 {
 
 	uint8_t r[FPRIME_SIZE], s[FPRIME_SIZE];
+	uint8_t pubx[F25519_SIZE], puby[F25519_SIZE];
 	uint8_t ret;
 
-	uint8_t msg[FPRIME_SIZE];
-	f25519_copy(msg, t->message_hash);
-
-	// 4. Calculate the curve point (x_1, y_1) = k * G.
-	struct ed25519_pt p1;
-	uint8_t ex[F25519_SIZE], ey[F25519_SIZE];
-	uint8_t wx[F25519_SIZE], wy[F25519_SIZE];
-	ed25519_smult(&p1, &ed25519_base, t->secret);
-	ed25519_unproject(ex, ey, &p1);
-	morph25519_e2w(wx, wy, ex, ey);
-	assert(f25519_eq(wx, t->pubx));
-	assert(f25519_eq(wy, t->puby));
+	ecdsa_pubkey(pubx, puby, t->secret);
+	assert(f25519_eq(pubx, t->pubx));
+	assert(f25519_eq(puby, t->puby));
 
 	ret = ecdsa_sign(r, s, t->secret, t->message_hash, t->randm);
 
@@ -206,9 +193,11 @@ static void test(const struct test_vector *t)
 	assert(!memcmp(t->s, s, sizeof(t->s)));
 	assert(ret);
 
-	ret = ecdsa_verify(wx, wy, t->message_hash, r, s);
+	ret = ecdsa_verify(pubx, puby, t->message_hash, r, s);
 	assert(ret);
 
+	uint8_t msg[FPRIME_SIZE];
+	f25519_copy(msg, t->message_hash);
 	msg[1] ^= 1;
 	assert(0 == ecdsa_verify(t->pubx, t->puby, msg, t->r, t->s));
 	msg[1] ^= 1;
