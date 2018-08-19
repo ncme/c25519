@@ -27,6 +27,15 @@ static void rshift(uint8_t* A, int t){
 	}
 }
 
+void ecdsa_pubkey(uint8_t *wx, uint8_t *wy, const uint8_t *secret)
+{
+	struct ed25519_pt p1;
+	uint8_t ex[F25519_SIZE], ey[F25519_SIZE];
+	ed25519_smult(&p1, &ed25519_base, secret);
+	ed25519_unproject(ex, ey, &p1);
+	morph25519_e2w(wx, wy, ex, ey);
+}
+
 uint8_t ecdsa_sign(uint8_t *r, uint8_t *s, const uint8_t *d,
 		 const uint8_t *e, const uint8_t *k)
 {

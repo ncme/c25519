@@ -10,20 +10,17 @@
 #include <stddef.h>
 #include "fprime.h"
 
-/* Any string of 32 random bytes is a valid secret key. There is no
- * clamping of bits, because we don't use the key directly as an
- * exponent (the exponent is derived from part of a key expansion).
+/*
+ * Generate an ecdsa public key (x,y of an affine point on Wei25519)
+ *
+ * input:
+ *	secret: a secret in the interval [1, n-1]
+ *
+ * output:
+ * 	wx: x-coordinate of the point
+ *  wy: y-coordinate of the point
  */
-#define ECDSA_SECRET_KEY_SIZE  32
-
-/* Given a secret key, produce the public key (x,y of a wei25519 point).
- */
-#define ECDSA_PUBLIC_KEY_SIZE  64
-
-void edsign_sec_to_pub(uint8_t *pub, const uint8_t *secret);
-
-/* Produce a signature for a message. */
-#define ECDSA_SIGNATURE_SIZE  32
+void ecdsa_pubkey(uint8_t *wx, uint8_t *wy, const uint8_t *secret);
 
 /**
  * Calculate the ecdsa signature.
