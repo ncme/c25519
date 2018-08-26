@@ -19,6 +19,58 @@ static void print_elem(const uint8_t *e)
 		printf("%02x", e[i]);
 }
 
+static void test_morph_wx2wy()
+{
+	static const uint8_t Gx[F25519_SIZE] = {
+		0x5a, 0x24, 0xad, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x2a
+	};  // the x coordinate of the base point
+	static const uint8_t Gy[F25519_SIZE] = {
+		0xd9, 0xd3, 0xce, 0x7e, 0xa2, 0xc5, 0xe9, 0x29,
+		0xb2, 0x61, 0x7c, 0x6d, 0x7e, 0x4d, 0x3d, 0x92,
+		0x4c, 0xd1, 0x48, 0x77, 0x2c, 0xdd, 0x1e, 0xe0,
+		0xb4, 0x86, 0xa0, 0xb8, 0xa1, 0x19, 0xae, 0x20
+	};  // the y coordinate of the base point
+
+	uint8_t Gy2[F25519_SIZE];
+	assert(morph25519_wx2wy(Gy2, Gx, morph25519_eparity(Gy)));
+	printf("  ");
+	print_elem(Gy);
+	printf(" [%d] ~ \n  ", morph25519_eparity(Gy));
+	print_elem(Gy2);
+	printf("\n");
+	assert(f25519_eq(Gy, Gy2));
+}
+
+static void test_morph_e2w(const uint8_t *ex, const uint8_t *ey)
+{
+	uint8_t w1x[F25519_SIZE], w2x[F25519_SIZE];
+	uint8_t w1y[F25519_SIZE], w2y[F25519_SIZE], w3y[F25519_SIZE];
+
+	uint8_t e1x[F25519_SIZE], e1y[F25519_SIZE];
+	morph25519_e2w(w1x, w1y, ex, ey);
+	morph25519_w2e(e1x, e1y, w1x, w1y);
+	assert(f25519_eq(e1x, ex));
+	assert(f25519_eq(e1y, ey));
+
+	uint8_t mx[F25519_SIZE], my[F25519_SIZE];
+	morph25519_ey2mx(mx, ey);
+	morph25519_m2w(w2x, w2y, mx, my);
+
+	assert(morph25519_wx2wy(w3y, w1x, !morph25519_eparity(w1y)));
+
+	assert(f25519_eq(w1x, w2x));
+	//assert(f25519_eq(w1y, w2y));
+	printf("  ");
+	print_elem(w1y);
+	printf(" [%d] ~ \n  ", !morph25519_eparity(w1y));
+	print_elem(w3y);
+	printf("\n");
+	assert(f25519_eq(w1y, w3y));
+}
+
 static void test_morph(const uint8_t *mx,
 		       const uint8_t *ex, const uint8_t *ey)
 {
@@ -35,8 +87,8 @@ static void test_morph(const uint8_t *mx,
 	print_elem(ey);
 	printf(")\n");
 
-	morph25519_e2m(mx_test, ey);
-	morph25519_m2e(ex_test, ey_test, mx, parity);
+	morph25519_ey2mx(mx_test, ey);
+	morph25519_mx2e(ex_test, ey_test, mx, parity);
 
 	assert(f25519_eq(mx_test, mx));
 	assert(f25519_eq(ex_test, ex));
@@ -76,6 +128,12 @@ int main(void)
 	printf("test_sm\n");
 	for (i = 0; i < 32; i++)
 		test_sm();
+
+	printf("test_morph_wx2wy\n");
+	test_morph_wx2wy();
+
+	printf("test_morph_e2w\n");
+	test_morph_e2w(ed25519_base.x, ed25519_base.y);
 
 	return 0;
 }
