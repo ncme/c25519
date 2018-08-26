@@ -18,12 +18,6 @@ const uint8_t f25519_A[F25519_SIZE] = {             // = 486662 mod 255^19
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 const uint8_t f25519_three[F25519_SIZE] = {3};      // =  3 mod 255^19
-const uint8_t f25519_minus_one[F25519_SIZE] = {     // = -1 mod 255^19
-	0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f
-};
 const uint8_t f25519_delta[F25519_SIZE] = {         // = (255^19 + A) / 3 mod 255^19
 	0x51, 0x24, 0xad, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
 	0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -36,18 +30,8 @@ const uint8_t f25519_c[F25519_SIZE] = {             // = sqrt(-(A + 2)) mod 255^
 	0x81, 0xb0, 0x03, 0xfc, 0x23, 0xf7, 0x84, 0x2d,
 	0x44, 0xf9, 0x5f, 0x9f, 0x0b, 0x12, 0xd9, 0x70
 };
-const uint8_t f25519_cinv[F25519_SIZE] = {          // = sqrt(-(A + 2))^-1 mod 255^19
-	0xe9, 0x68, 0x42, 0xdb, 0xaf, 0x04, 0xb4, 0x40,
-	0xa1, 0xd5, 0x43, 0xf2, 0xf9, 0x38, 0x31, 0x28,
-	0x01, 0x17, 0x05, 0x67, 0x9b, 0x81, 0x61, 0xf8,
-	0xa9, 0x5b, 0x3e, 0x6a, 0x20, 0x67, 0x4b, 0x24
-};
 
-/*
- * Transforms the y-coordinate of a point on the Edwards curve Ed25519
- * to the x-coordinate of a point on the Montgomery curve Curve25519.
- */
-void morph25519_e2m(uint8_t *mx, const uint8_t *ey)
+void morph25519_ey2mx(uint8_t *mx, const uint8_t *ey)
 {
 	uint8_t yplus[F25519_SIZE];
 	uint8_t yminus[F25519_SIZE];
@@ -59,11 +43,7 @@ void morph25519_e2m(uint8_t *mx, const uint8_t *ey)
 	f25519_normalize(mx);                   // mx = (1 + ey) * (1 - ey)^-1 (mod p)
 }
 
-/*
- * Transforms the x-coordinate of a point on the Montgomery curve Curve25519
- * to the y-coordinate of a point on the Edwards curve Ed25519.
- */
-static void mx2ey(uint8_t *ey, const uint8_t *mx)
+void morph25519_mx2ey(uint8_t *ey, const uint8_t *mx)
 {
 	uint8_t n[F25519_SIZE];
 	uint8_t d[F25519_SIZE];
@@ -74,11 +54,7 @@ static void mx2ey(uint8_t *ey, const uint8_t *mx)
 	f25519_mul__distinct(ey, n, d); // ey = (mx - 1) * (mx + 1)^-1
 }
 
-/*
- * Recovers the x-coordinate of the Edwards curve Ed25519
- * from the y-coordinate and a parity bit.
- */
-static uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
+uint8_t morph25519_ey2ex(uint8_t *x, const uint8_t *y, int parity)
 {
 	static const uint8_t d[F25519_SIZE] = {
 		0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75,
@@ -102,7 +78,7 @@ static uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
 	/* Compute a = y^2-1 */
 	f25519_sub(a, c, f25519_one);
 
-	/* Compute c = a*b = (y^2+1)/(1-dy^2) */
+	/* Compute c = a*b = (y^2-1)/(1+dy^2) */
 	f25519_mul__distinct(c, a, b);
 
 	/* Compute a, b = +/-sqrt(c), if c is square */
@@ -120,63 +96,95 @@ static uint8_t ey2ex(uint8_t *x, const uint8_t *y, int parity)
 	return f25519_eq(a, c);
 }
 
-/*
-Okeya–Sakurai y-coordinate recovery
-Input:
-	(xP : yP : 1) = P,
-	(XQ : ZQ) = x(Q),
-	(X⊕ : Z⊕) = x(P ⊕ Q) for P and Q in E(A,B)(Fq)
-	 with P /∈ E(A,B)[2] and Q /∈ {P, ⊖P, O}.
-Output:
-	(X′ : Y′ : Z′) = Q
-Cost:
-	10M + 1S + 2c + 3a + 3s
-*/
+uint8_t morph25519_wx2wy(uint8_t *wy, const uint8_t *wx, int sign)
+{
+	static const uint8_t a[F25519_SIZE] = {
+		0x44, 0xa1, 0x14, 0x49, 0x98, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x2a
+	};  // curve parameter a_4 = a
+	static const uint8_t b[F25519_SIZE] = {
+		0x64, 0xc8, 0x10, 0x77, 0x9c, 0x5e, 0x0b, 0x26,
+		0xb4, 0x97, 0xd0, 0x5e, 0x42, 0x7b, 0x09, 0xed,
+		0x25, 0xb4, 0x97, 0xd0, 0x5e, 0x42, 0x7b, 0x09,
+		0xed, 0x25, 0xb4, 0x97, 0xd0, 0x5e, 0x42, 0x7b
+	};  // curve parameter a_6 = b
+
+	// y = +/- SQRT(x³ + ax + b)
+	uint8_t T1[F25519_SIZE];
+	uint8_t T2[F25519_SIZE];
+	uint8_t T3[F25519_SIZE];
+
+	/* Compute T2 = x^3 */
+	f25519_mul__distinct(T1, wx, wx);
+	f25519_mul__distinct(T2, T1, T1);
+
+	/* Compute T1 = ax */
+	f25519_mul__distinct(T1, a, wx);
+
+	/* Compute T3 = x^3 + ax */
+	f25519_add(T3, T2, T1);
+
+	/* Compute T1 = x^3 + ax + b */
+	f25519_add(T1, T3, b);
+
+	/* Compute T2, T3 = +/-sqrt(T1), if T1 is square */
+	f25519_sqrt(T2, T1);
+	f25519_neg(T3, T2);
+
+	/* Select one of them, based on the sign bit */
+	f25519_select(wy, T2, T3, sign);
+
+	/* Verify that T2 = wy^2 == T1 */
+	f25519_mul__distinct(T2, wy, wy);
+	f25519_normalize(T1);
+	f25519_normalize(T2);
+
+	return f25519_eq(T1, T2);
+}
+
 void morph25519_montgomery_recovery(
 			uint8_t *xQ, uint8_t *yQ, uint8_t *zQ,
 			const uint8_t *xP, const uint8_t *yP,
 			const uint8_t *XQ, const uint8_t *ZQ,
 			const uint8_t *xD, const uint8_t *zD)
 {
-	static const uint8_t A2[F25519_SIZE] = { 0x0c, 0xda, 0x0e }; // 2 * A
-	static const uint8_t B2[F25519_SIZE] = { 0x02 }; // 2 * B
+	static const uint32_t A2 = 973324; 	// 2 * A
+	static const uint32_t B2 = 2;		// 2 * B
 
 	uint8_t v1[F25519_SIZE], v2[F25519_SIZE];
 	uint8_t	v3[F25519_SIZE], v4[F25519_SIZE];
 
-	f25519_mul(v1, xP, ZQ); // 1 v1 ← xP · ZQ 	1M
-	f25519_add(v2, XQ, v1);	// 2 v2 ← XQ + v1 	1a
-	f25519_sub(v3, XQ, v1);	// 3 v3 ← XQ − v1 	1s
-	f25519_mul(v3, v3, v3);	// 4 v3 ← v3^2 		1S
-	f25519_mul(v3, v3, xD);	// 5 v3 ← v3 · X⊕ 	1M
-	f25519_mul(v1, A2, ZQ);	// 6 v1 ← 2A · ZQ 	1c
-	f25519_add(v2, v2, v1);	// 7 v2 ← v2 + v1 	1a
-	f25519_mul(v4, xP, XQ);	// 8 v4 ← xP · XQ 	1M
-	f25519_add(v4, v4, ZQ);	// 9 v4 ← v4 + ZQ 	1a
-	f25519_mul(v2, v2, v4);	// 10 v2 ← v2 · v4 	1M
-	f25519_mul(v1, v1, ZQ);	// 11 v1 ← v1 · ZQ 	1M
-	f25519_sub(v2, v2, v1);	// 12 v2 ← v2 − v1 	1s
-	f25519_mul(v2, v2, zD);	// 13 v2 ← v2 · Z⊕ 	1M
-	f25519_sub(yQ, v2, v3);	// 14 Y′ ← v2 − v3 	1s
-	f25519_mul(v1, B2, yP);	// 15 v1 ← 2B · yP 	1c
-	f25519_mul(v1, v1, ZQ);	// 16 v1 ← v1 · ZQ 	1M
-	f25519_mul(v1, v1, zD);	// 17 v1 ← v1 · Z⊕ 	1M
-	f25519_mul(xQ, v1, XQ);	// 18 X′ ← v1 · XQ 	1M
-	f25519_mul(zQ, v1, ZQ);	// 19 Z′ ← v1 · ZQ 	1M
+	f25519_mul(v1, xP, ZQ);   // 1 v1 ← xP · ZQ 	1M
+	f25519_add(v2, XQ, v1);	  // 2 v2 ← XQ + v1 	1a
+	f25519_sub(v3, XQ, v1);	  // 3 v3 ← XQ − v1 	1s
+	f25519_mul(v3, v3, v3);	  // 4 v3 ← v3^2 		1S
+	f25519_mul(v3, v3, xD);	  // 5 v3 ← v3 · X⊕ 	1M
+	f25519_mul_c(v1, ZQ, A2); // 6 v1 ← 2A · ZQ 	1c
+	f25519_add(v2, v2, v1);	  // 7 v2 ← v2 + v1 	1a
+	f25519_mul(v4, xP, XQ);	  // 8 v4 ← xP · XQ 	1M
+	f25519_add(v4, v4, ZQ);	  // 9 v4 ← v4 + ZQ 	1a
+	f25519_mul(v2, v2, v4);	  // 10 v2 ← v2 · v4 	1M
+	f25519_mul(v1, v1, ZQ);	  // 11 v1 ← v1 · ZQ 	1M
+	f25519_sub(v2, v2, v1);	  // 12 v2 ← v2 − v1 	1s
+	f25519_mul(v2, v2, zD);	  // 13 v2 ← v2 · Z⊕ 	1M
+	f25519_sub(yQ, v2, v3);	  // 14 Y′ ← v2 − v3 	1s
+	f25519_mul_c(v1, yP, B2); // 15 v1 ← 2B · yP 	1c
+	f25519_mul(v1, v1, ZQ);	  // 16 v1 ← v1 · ZQ 	1M
+	f25519_mul(v1, v1, zD);	  // 17 v1 ← v1 · Z⊕ 	1M
+	f25519_mul(xQ, v1, XQ);	  // 18 X′ ← v1 · XQ 	1M
+	f25519_mul(zQ, v1, ZQ);	  // 19 Z′ ← v1 · ZQ 	1M
 	// 20 return (X′ : Y′ : Z′)
 }
 
-/*
- * Transforms the x-coordinate of a point on the Montgomery curve Curve25519
- * to x- and y-coordinate of the Edwards curve Ed25519.
- */
-uint8_t morph25519_m2e(uint8_t *ex, uint8_t *ey,
+uint8_t morph25519_mx2e(uint8_t *ex, uint8_t *ey,
 			   const uint8_t *mx, int parity)
 {
 	uint8_t ok;
 
-	mx2ey(ey, mx);
-	ok = ey2ex(ex, ey, parity);
+	morph25519_mx2ey(ey, mx);
+	ok = morph25519_ey2ex(ex, ey, parity);
 
 	f25519_normalize(ex);
 	f25519_normalize(ey);
@@ -184,11 +192,7 @@ uint8_t morph25519_m2e(uint8_t *ex, uint8_t *ey,
 	return ok;
 }
 
-/*
- * Transforms the x-coordinate of a point on the short Weierstrass curve Wei25519
- * to the x-coordinate of a point on the Montgomery curve Curve25519.
- */
-static void morph25519_wx2mx(uint8_t* mx, const uint8_t* wx)
+void morph25519_wx2mx(uint8_t* mx, const uint8_t* wx)
 {
 	/*
 		The following code calculates:
@@ -200,11 +204,7 @@ static void morph25519_wx2mx(uint8_t* mx, const uint8_t* wx)
 	f25519_select(mx, tmp, f25519_zero, f25519_eq(wx, f25519_zero));
 }
 
-/*
- * Transforms the x-coordinate of a point on the Montgomery curve Curve25519
- * to the x-coordinate of a point on the short Weierstrass curve Wei25519.
- */
-static void morph25519_mx2wx(uint8_t* wx, const uint8_t* mx)
+void morph25519_mx2wx(uint8_t* wx, const uint8_t* mx)
 {
 	/*
 		The following code calculates:
@@ -216,34 +216,20 @@ static void morph25519_mx2wx(uint8_t* wx, const uint8_t* mx)
 	f25519_select(wx, tmp, f25519_zero, f25519_eq(mx, f25519_zero));
 }
 
-/*
- * Transforms an affine point on the Montgomery curve Curve25519
- * to an affine point on the short Weierstrass curve Wei25519.
- */
 void morph25519_m2w(uint8_t* wx, uint8_t* wy, const uint8_t* mx, const uint8_t* my)
 {
 	morph25519_mx2wx(wx, mx);
 	f25519_copy(wy, my);
 }
 
-/*
- * Transforms an affine point on the short Weierstrass curve Wei25519
- * to an affine point on the Montgomery curve Curve25519.
- */
 void morph25519_w2m(uint8_t* mx, uint8_t* my, const uint8_t* wx, const uint8_t* wy)
 {
 	morph25519_wx2mx(mx, wx);
 	f25519_copy(my, wy);
 }
 
-/*
- * Transforms an affine point on the Edwards curve Ed25519
- * to an affine point on the short Weierstrass curve Wei25519.
- */
 void morph25519_e2w(uint8_t* wx, uint8_t* wy, const uint8_t* ex, const uint8_t* ey)
 {
-	//TODO: check special cases
-
 	/*
 		The following code calculates:
 		wx = (1 + ey) / ((1 - ey) + delta)   (mod p)
@@ -268,14 +254,8 @@ void morph25519_e2w(uint8_t* wx, uint8_t* wy, const uint8_t* ex, const uint8_t* 
 	f25519_normalize(wy);        				//  wy = (c * (1 + ey)) * ((1 - ey) * ex)^-1  (mod p)
 }
 
-/*
- * Transforms an affine point on the short Weierstrass curve Wei25519
- * to an affine point on the Edwards curve Ed25519.
- */
 void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* my)
 {
-	// TODO: check special cases
-
 	/*
 		The following code calculates:
 		pa = 3 * p.x - A
@@ -287,11 +267,11 @@ void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* 
 	uint8_t den[F25519_SIZE]; // denominator
 	uint8_t inv[F25519_SIZE]; // inverted denominator
 
-	f25519_mul__distinct(inv, f25519_three, mx);// inv = 3 * mx
+	f25519_mul_c(inv, mx, 3);					// inv = 3 * mx
 	f25519_sub(pa, inv, f25519_A);              // pa  = 3 * mx - A
 
 	f25519_mul__distinct(nom, f25519_c, pa);    // nom =  c * pa
-	f25519_mul__distinct(den, f25519_three, my);// den =             3 * my
+	f25519_mul_c(den, my, 3);					// den =             3 * my
 	f25519_inv__distinct(inv, den);             // inv =            (3 * my)^-1
 	f25519_mul__distinct(ex, nom, inv);         // ex  = (c * pa) * (3 * my)^-1
 	f25519_normalize(ex);                       // ex  = (c * pa) * (3 * my)^-1 (mod p)
@@ -301,4 +281,51 @@ void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* 
 	f25519_inv__distinct(inv, den);             // inv =            (pa + 3)^-1
 	f25519_mul__distinct(ey, nom, inv);         //  ey = (pa - 3) * (pa + 3)^-1
 	f25519_normalize(ey);                       //  ey = (pa - 3) * (pa + 3)^-1 (mod p)
+}
+
+void morph25519_e2m(uint8_t* mx, uint8_t* my, const uint8_t* ex, const uint8_t* ey)
+{
+	/*
+		The following code calculates:
+		mx = (1 + ey) / (1 - ey) (mod p)
+		my = c * (1 + ey) / (1 - ey) * ex  (mod p)
+	*/
+	uint8_t nom[F25519_SIZE];   // nominator
+	uint8_t den[F25519_SIZE];   // denominator
+	uint8_t inv[F25519_SIZE];   // inversion result
+
+	f25519_add(nom, f25519_one, ey);    // nom =   1 + ey
+	f25519_sub(den, f25519_one, ey);    // den =              1 - ey
+	f25519_inv__distinct(inv, den);     // inv =             (1 - ey)^-1
+	f25519_mul__distinct(mx, nom, inv); // mul =  (1 + ey) * (1 - ey)^-1
+	f25519_normalize(mx);        		//  mx = ((1 + ey) * (1 - ey)^-1) (mod p)
+
+	f25519_mul__distinct(inv, den, ex);			// inv =                 (1 - ey) * ex
+	f25519_inv__distinct(den, inv);     		// den =                ((1 - ey) * ex)^-1
+	f25519_mul__distinct(inv, f25519_c, nom); 	// inv = c * (1 + ey)
+	f25519_mul__distinct(my, inv, den); 		//  my = c * (1 + ey) * ((1 - ey) * ex)^-1
+	f25519_normalize(my);        				//  my = c * (1 + ey) * ((1 - ey) * ex)^-1  (mod p)
+}
+
+void morph25519_m2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* my)
+{
+	/*
+		The following code calculates:
+		ex = (c * mx) * my^-1
+		ey = mx-1 * mx+1
+	*/
+	uint8_t nom[F25519_SIZE]; // nominator
+	uint8_t den[F25519_SIZE]; // denominator
+	uint8_t inv[F25519_SIZE]; // inverted denominator
+
+	f25519_mul__distinct(nom, f25519_c, mx);    // nom =  c * mx
+	f25519_inv__distinct(inv, my);              // inv =      my^-1
+	f25519_mul__distinct(ex, nom, inv);         // ex  = mx * my^-1
+	f25519_normalize(ex);                       // ex  = mx * my^-1 (mod p)
+
+	f25519_sub(nom, mx, f25519_one);            // nom =  mx - 1
+	f25519_add(den, mx, f25519_one);            // den =             mx + 1
+	f25519_inv__distinct(inv, den);             // inv =            (mx + 1)^-1
+	f25519_mul__distinct(ey, nom, inv);         //  ey = (mx - 1) * (mx + 1)^-1
+	f25519_normalize(ey);                       //  ey = (mx - 1) * (mx + 1)^-1 (mod p)
 }
