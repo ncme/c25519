@@ -19,56 +19,41 @@ static void print_elem(const uint8_t *e)
 		printf("%02x", e[i]);
 }
 
-static void test_morph_wx2wy()
+static void test_morph_wx2wy(const uint8_t *wy, const uint8_t *wx)
 {
-	static const uint8_t Gx[F25519_SIZE] = {
-		0x5a, 0x24, 0xad, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x2a
-	};  // the x coordinate of the base point
-	static const uint8_t Gy[F25519_SIZE] = {
-		0xd9, 0xd3, 0xce, 0x7e, 0xa2, 0xc5, 0xe9, 0x29,
-		0xb2, 0x61, 0x7c, 0x6d, 0x7e, 0x4d, 0x3d, 0x92,
-		0x4c, 0xd1, 0x48, 0x77, 0x2c, 0xdd, 0x1e, 0xe0,
-		0xb4, 0x86, 0xa0, 0xb8, 0xa1, 0x19, 0xae, 0x20
-	};  // the y coordinate of the base point
-
-	uint8_t Gy2[F25519_SIZE];
-	assert(morph25519_wx2wy(Gy2, Gx, morph25519_eparity(Gy)));
-	printf("  ");
-	print_elem(Gy);
-	printf(" [%d] ~ \n  ", morph25519_eparity(Gy));
-	print_elem(Gy2);
-	printf("\n");
-	assert(f25519_eq(Gy, Gy2));
+	uint8_t y[F25519_SIZE];
+	for(int i = 0; i < 2; i++) {
+		assert(morph25519_wx2wy(y, wx, i));
+		printf("  ");
+		print_elem(wy);
+		printf(" [%d] ~ \n  ", i);
+		print_elem(y);
+		printf("\n");
+		if(f25519_eq(y, wy))
+			break;
+	}
+	assert(f25519_eq(y, wy));
 }
 
 static void test_morph_e2w(const uint8_t *ex, const uint8_t *ey)
 {
-	uint8_t w1x[F25519_SIZE], w2x[F25519_SIZE];
-	uint8_t w1y[F25519_SIZE], w2y[F25519_SIZE], w3y[F25519_SIZE];
+	uint8_t wx[F25519_SIZE];
+	uint8_t wy[F25519_SIZE];
 
 	uint8_t e1x[F25519_SIZE], e1y[F25519_SIZE];
-	morph25519_e2w(w1x, w1y, ex, ey);
-	morph25519_w2e(e1x, e1y, w1x, w1y);
+	morph25519_e2w(wx, wy, ex, ey);
+	morph25519_w2e(e1x, e1y, wx, wy);
+
+	printf("  ");
+	print_elem(e1x);
+	printf(" \n    ~ (");
+	print_elem(ex);
+	printf(", ");
+	print_elem(ey);
+	printf(")\n");
+
 	assert(f25519_eq(e1x, ex));
 	assert(f25519_eq(e1y, ey));
-
-	uint8_t mx[F25519_SIZE], my[F25519_SIZE];
-	morph25519_ey2mx(mx, ey);
-	morph25519_m2w(w2x, w2y, mx, my);
-
-	assert(morph25519_wx2wy(w3y, w1x, !morph25519_eparity(w1y)));
-
-	assert(f25519_eq(w1x, w2x));
-	//assert(f25519_eq(w1y, w2y));
-	printf("  ");
-	print_elem(w1y);
-	printf(" [%d] ~ \n  ", !morph25519_eparity(w1y));
-	print_elem(w3y);
-	printf("\n");
-	assert(f25519_eq(w1y, w3y));
 }
 
 static void test_morph(const uint8_t *mx,
@@ -114,6 +99,12 @@ static void test_sm(void)
 	ed25519_unproject(ex, ey, &p);
 
 	test_morph(mx, ex, ey);
+	test_morph_e2w(ex, ey);
+
+	uint8_t wx[F25519_SIZE];
+	uint8_t wy[F25519_SIZE];
+	morph25519_e2w(wx, wy, ex, ey);
+	test_morph_wx2wy(wy, wx);
 }
 
 int main(void)
@@ -130,7 +121,19 @@ int main(void)
 		test_sm();
 
 	printf("test_morph_wx2wy\n");
-	test_morph_wx2wy();
+	static const uint8_t Gx[F25519_SIZE] = {
+		0x5a, 0x24, 0xad, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+		0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x2a
+	};  // the x coordinate of the base point
+	static const uint8_t Gy[F25519_SIZE] = {
+		0xd9, 0xd3, 0xce, 0x7e, 0xa2, 0xc5, 0xe9, 0x29,
+		0xb2, 0x61, 0x7c, 0x6d, 0x7e, 0x4d, 0x3d, 0x92,
+		0x4c, 0xd1, 0x48, 0x77, 0x2c, 0xdd, 0x1e, 0xe0,
+		0xb4, 0x86, 0xa0, 0xb8, 0xa1, 0x19, 0xae, 0x20
+	};  // the y coordinate of the base point
+	test_morph_wx2wy(Gy, Gx);
 
 	printf("test_morph_e2w\n");
 	test_morph_e2w(ed25519_base.x, ed25519_base.y);
