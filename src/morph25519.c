@@ -118,7 +118,7 @@ uint8_t morph25519_wx2wy(uint8_t *wy, const uint8_t *wx, int sign)
 
 	/* Compute T2 = x^3 */
 	f25519_mul__distinct(T1, wx, wx);
-	f25519_mul__distinct(T2, T1, T1);
+	f25519_mul__distinct(T2, T1, wx);
 
 	/* Compute T1 = ax */
 	f25519_mul__distinct(T1, a, wx);
@@ -134,6 +134,7 @@ uint8_t morph25519_wx2wy(uint8_t *wy, const uint8_t *wx, int sign)
 	f25519_neg(T3, T2);
 
 	/* Select one of them, based on the sign bit */
+	f25519_copy(wy, f25519_zero);
 	f25519_select(wy, T2, T3, sign);
 
 	/* Verify that T2 = wy^2 == T1 */
