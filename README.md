@@ -9,6 +9,8 @@ This package contains portable public-domain implementations of Daniel
 J. Bernstein's Curve25519[^1] Diffie-Hellman function, and of the
 Ed25519 signature system[^2]. Furthermore it includes transformations
 between the birationally equivalent curves Wei25519, Curve25519 and Ed25519.
+These transformations are used by an implementation on ECDSA that performs
+operations on the Ed25519 curve.
 
 The memory consumption is low enough that
 they could be reasonably considered for most microcontroller
@@ -39,7 +41,7 @@ The package is divided into the following separable subsystems:
   ~ Conversion between short Weierstrass (wei25519), Montgomery (c25519)
     and Edwards (ed25519) coordinates. This can be used, for example,
     to compute the Curve25519 Diffie-Hellman exchange in Edwards
-    coordinates or to perform ECDSA with Ed25519 or Curve25519.
+    coordinates or to perform ECDSA with Ed25519.
 
 ``fprime``
 
@@ -47,6 +49,11 @@ The package is divided into the following separable subsystems:
     (up to a fixed, but configurable, size). This is much slower than
     f25519, which is optimized to take advantage of the sparse form of
     2^255-19.
+
+``ecdsa``
+
+  ~ An implementation of ECDSA_Wei25519 that performs scalar multiplications
+    using the ed25519 back end.
 
 ``sha512``
 
