@@ -29,9 +29,9 @@ extern const uint8_t fprime_one[FPRIME_SIZE];
 /* Load a small constant */
 void fprime_load(uint8_t *x, uint32_t c);
 
-/* Load a large constant */
-void fprime_from_bytes(uint8_t *x,
-		       const uint8_t *in, size_t len,
+/* Load a large constant x into r */
+void fprime_from_bytes(uint8_t *r,
+		       const uint8_t *x, size_t len,
 		       const uint8_t *modulus);
 
 /* Copy an element */

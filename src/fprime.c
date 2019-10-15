@@ -88,7 +88,7 @@ static inline int min_int(int a, int b)
 	return a < b ? a : b;
 }
 
-void fprime_from_bytes(uint8_t *n,
+void fprime_from_bytes(uint8_t *r,
 		       const uint8_t *x, size_t len,
 		       const uint8_t *modulus)
 {
@@ -98,31 +98,31 @@ void fprime_from_bytes(uint8_t *n,
 	const int rbits = (len << 3) - preload_total;
 	int i;
 
-	memset(n, 0, FPRIME_SIZE);
+	memset(r, 0, FPRIME_SIZE);
 
 	for (i = 0; i < preload_bytes; i++)
-		n[i] = x[len - preload_bytes + i];
+		r[i] = x[len - preload_bytes + i];
 
 	if (preload_bits) {
-		shift_n_bits(n, preload_bits);
-		n[0] |= x[len - preload_bytes - 1] >> (8 - preload_bits);
+		shift_n_bits(r, preload_bits);
+		r[0] |= x[len - preload_bytes - 1] >> (8 - preload_bits);
 	}
 
 	for (i = rbits - 1; i >= 0; i--) {
 		const uint8_t bit = (x[i >> 3] >> (i & 7)) & 1;
 
-		shift_n_bits(n, 1);
-		n[0] |= bit;
-		raw_try_sub(n, modulus);
+		shift_n_bits(r, 1);
+		r[0] |= bit;
+		raw_try_sub(r, modulus);
 	}
 }
 
 void fprime_normalize(uint8_t *x, const uint8_t *modulus)
 {
-	uint8_t n[FPRIME_SIZE];
+	uint8_t r[FPRIME_SIZE];
 
-	fprime_from_bytes(n, x, FPRIME_SIZE, modulus);
-	fprime_copy(x, n);
+	fprime_from_bytes(r, x, FPRIME_SIZE, modulus);
+	fprime_copy(x, r);
 }
 
 uint8_t fprime_eq(const uint8_t *x, const uint8_t *y)
