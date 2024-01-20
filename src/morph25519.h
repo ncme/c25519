@@ -130,7 +130,7 @@ void morph25519_e2w(uint8_t* wx, uint8_t* wy, const uint8_t* ex, const uint8_t* 
  * Output:
  *  (EX, EY) on Ed25519
  */
-void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* mx, const uint8_t* my);
+void morph25519_w2e(uint8_t* ex, uint8_t* ey, const uint8_t* wx, const uint8_t* wy);
 
 /*
  * Transforms an affine point on the Edwards curve Ed25519
